@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Kublai's Bulk Tracker</title>
+<style>
+:root {
+  --bg: #0f0f0f; --card: #1a1a1a; --border: #2a2a2a;
+  --accent: #f5a623; --green: #4caf50; --red: #f44336;
+  --blue: #4fc3f7; --purple: #ce93d8; --text: #f0f0f0;
+  --muted: #888; --radius: 14px; --tab-h: 68px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px; overscroll-behavior: none; }
+
+/* TABS */
+.tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; height: var(--tab-h);
+  background: #111; border-top: 1px solid var(--border);
+  display: flex; z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tab-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; background: none; border: none;
+  color: var(--muted); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.3px; cursor: pointer; padding-top: 8px;
+  transition: color 0.15s;
+}
+.tab-btn .ti { font-size: 22px; line-height: 1; }
+.tab-btn.active { color: var(--accent); }
+
+/* PANELS */
+.panel { display: none; height: calc(100vh - var(--tab-h)); overflow-y: auto;
+  padding: 0 0 20px; -webkit-overflow-scrolling: touch; }
+.panel.active { display: block; }
+
+/* COMMON */
+.section { padding: 20px 16px 0; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.card { background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
+
+/* HERO STRIP */
+.hero-strip { background: linear-gradient(135deg,#1a0a00,#111);
+  padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+.hero-strip h1 { font-size: 22px; font-weight: 900; }
+.hero-strip h1 span { color: var(--accent); }
+.hero-strip p { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+/* PROGRESS BAR */
+.prog-wrap { margin-top: 14px; }
+.prog-label { display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.prog-label strong { color: var(--text); }
+.prog-bg { background: #222; border-radius: 20px; height: 12px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 20px;
+  background: linear-gradient(90deg, var(--accent), #f0c040);
+  transition: width 0.5s ease; }
+.prog-pct { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* STATS GRID */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
+.stat-card { background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; }
+.stat-card .sv { font-size: 26px; font-weight: 900; }
+.stat-card .sl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.sc-orange .sv { color: var(--accent); }
+.sc-green .sv { color: var(--green); }
+.sc-blue .sv { color: var(--blue); }
+.sc-purple .sv { color: var(--purple); }
+
+/* WEIGHT INPUT */
+.w-input-row { display: flex; gap: 10px; margin-top: 4px; }
+.w-input-row input { flex: 1; background: #222; border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 17px;
+  font-weight: 700; outline: none; -webkit-appearance: none; }
+.w-input-row input:focus { border-color: var(--accent); }
+.btn-primary { background: var(--accent); color: #000; border: none;
+  border-radius: 10px; padding: 12px 20px; font-size: 15px; font-weight: 800;
+  cursor: pointer; white-space: nowrap; }
+.btn-secondary { background: #222; color: var(--text); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 600;
+  cursor: pointer; }
+.btn-danger { background: #2e0a0a; color: var(--red); border: 1px solid #5a1a1a;
+  border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* MEAL CARDS */
+.meal-item { background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 14px; transition: all 0.2s; }
+.meal-item.done { border-color: var(--green); background: #0d1f0d; opacity: 0.8; }
+.meal-check { width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--border); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; cursor: pointer;
+  font-size: 16px; background: #222; transition: all 0.2s; }
+.meal-item.done .meal-check { background: var(--green); border-color: var(--green); }
+.meal-info { flex: 1; }
+.meal-info .mn { font-size: 15px; font-weight: 700; }
+.meal-item.done .meal-info .mn { text-decoration: line-through; color: var(--muted); }
+.meal-info .mt { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.meal-kcal { font-size: 13px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+.meal-item.done .meal-kcal { color: var(--green); }
+
+/* CALORIE BAR */
+.cal-bar-wrap { background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.cal-numbers { display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 8px; }
+.cal-current { font-size: 32px; font-weight: 900; color: var(--accent); }
+.cal-target { font-size: 14px; color: var(--muted); }
+.cal-prog-bg { background: #222; border-radius: 20px; height: 10px; overflow: hidden; }
+.cal-prog-fill { height: 100%; border-radius: 20px;
+  background: linear-gradient(90deg, var(--accent), var(--green)); transition: width 0.3s; }
+
+/* WORKOUT BTN */
+.workout-btn { width: 100%; padding: 16px; border-radius: var(--radius);
+  font-size: 16px; font-weight: 800; cursor: pointer; border: 2px solid;
+  transition: all 0.2s; margin-bottom: 12px; }
+.workout-btn.off { background: #1a1a00; border-color: var(--accent); color: var(--accent); }
+.workout-btn.on { background: #0a2e0a; border-color: var(--green); color: var(--green); }
+
+/* CANVAS CHART */
+canvas { width: 100%; border-radius: 10px; display: block; }
+
+/* WEIGHT LOG LIST */
+.wlog-item { display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #1f1f1f; font-size: 14px; }
+.wlog-item .wd { color: var(--muted); font-size: 12px; }
+.wlog-item .wv { font-weight: 700; }
+.wlog-diff { font-size: 12px; font-weight: 600; }
+.diff-up { color: var(--green); }
+.diff-down { color: var(--red); }
+
+/* SHOPPING CHECKLIST */
+.shop-item { display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid #1f1f1f; font-size: 14px; cursor: pointer; }
+.shop-check { width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid var(--border); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; font-size: 13px; background: #222; }
+.shop-item.done .shop-check { background: var(--green); border-color: var(--green); }
+.shop-item.done span { text-decoration: line-through; color: var(--muted); }
+.shop-item .sq { color: var(--accent); font-weight: 700; font-size: 12px;
+  margin-left: auto; flex-shrink: 0; }
+
+/* STEPS */
+.step { display: flex; gap: 12px; margin-bottom: 14px; }
+.step-n { background: var(--accent); color: #000; font-weight: 900;
+  font-size: 14px; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.step-c h4 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.step-c p { font-size: 13px; color: var(--muted); }
+
+/* RULES */
+.rule { display: flex; gap: 12px; background: var(--card);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+  border-left: 3px solid var(--accent); }
+.rule-n { color: var(--accent); font-weight: 900; font-size: 18px; flex-shrink: 0; }
+.rule p { font-size: 14px; line-height: 1.5; }
+
+/* TIPS */
+.tip { display: flex; gap: 12px; background: var(--card);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+.tip-i { font-size: 22px; flex-shrink: 0; }
+.tip-c h4 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.tip-c p { font-size: 13px; color: var(--muted); }
+
+/* TOAST */
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
+  background: var(--green); color: #000; padding: 10px 20px; border-radius: 20px;
+  font-weight: 700; font-size: 14px; transition: transform 0.3s; z-index: 999; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* STREAK BADGE */
+.streak { display: inline-flex; align-items: center; gap: 6px;
+  background: #2e1a00; border: 1px solid var(--accent); border-radius: 20px;
+  padding: 4px 12px; font-size: 13px; font-weight: 700; color: var(--accent); }
+
+/* RESET BTN */
+.reset-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 16px; }
+
+/* RAMP WEEK */
+.ramp-week { background: var(--card); border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 10px; }
+.rw-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+.rw-head strong { font-weight: 700; }
+.rw-head span { color: var(--accent); font-weight: 700; }
+.rw-bar-bg { background: #222; border-radius: 20px; height: 7px; overflow: hidden; }
+.rw-bar-fill { height: 100%; border-radius: 20px;
+  background: linear-gradient(90deg, var(--accent), #f0c040); }
+.rw-note { font-size: 12px; color: var(--muted); margin-top: 5px; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════ TAB 1: DASHBOARD ═══════════════ -->
+<div class="panel active" id="tab-home">
+  <div class="hero-strip">
+    <h1>50kg → <span>70kg</span> 💪</h1>
+    <p>Kublai's Dirty Bulk Tracker</p>
+    <div class="prog-wrap">
+      <div class="prog-label">
+        <span>Start: <strong>50kg</strong></span>
+        <span>Current: <strong id="curr-weight-disp">50kg</strong></span>
+        <span>Goal: <strong>70kg</strong></span>
+      </div>
+      <div class="prog-bg"><div class="prog-fill" id="weight-prog-bar" style="width:0%"></div></div>
+      <div class="prog-pct" id="weight-prog-pct">0% to goal</div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card sc-orange">
+      <div class="sv" id="dash-kcal">0</div>
+      <div class="sl">kcal today</div>
+    </div>
+    <div class="stat-card sc-green">
+      <div class="sv" id="dash-meals">0/6</div>
+      <div class="sl">meals eaten</div>
+    </div>
+    <div class="stat-card sc-blue">
+      <div class="sv" id="dash-gained">0kg</div>
+      <div class="sl">gained so far</div>
+    </div>
+    <div class="stat-card sc-purple">
+      <div class="sv" id="dash-streak">0 🔥</div>
+      <div class="sl">day streak</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Log Today's Weight</div>
+    <div class="w-input-row">
+      <input type="number" id="weight-input" placeholder="e.g. 50.5" step="0.1" min="40" max="120" inputmode="decimal">
+      <button class="btn-primary" onclick="logWeight()">Log ✓</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px;">Weigh yourself every morning before eating.</p>
+  </div>
+
+  <div class="section" style="margin-top:16px;">
+    <div class="section-title">Today's Training</div>
+    <button class="workout-btn off" id="workout-btn" onclick="toggleWorkout()">
+      🏋️ Mark Today's Workout Done
+    </button>
+  </div>
+
+  <div class="section" style="margin-top:4px;">
+    <div class="section-title">4-Month Timeline</div>
+    <div class="card">
+      <div style="font-size:13px;color:var(--muted);line-height:1.8;">
+        <div>📅 <strong style="color:#fff">Month 1</strong> — Nail routine, +3–5kg scale</div>
+        <div>📅 <strong style="color:#fff">Month 2</strong> — Increase all weights, +5–6kg</div>
+        <div>📅 <strong style="color:#fff">Month 3</strong> — Max progressive overload, +5–6kg</div>
+        <div>📅 <strong style="color:#fff">Month 4</strong> — Push to 70kg+ ✅</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 2: TODAY'S MEALS ═══════════════ -->
+<div class="panel" id="tab-meals">
+  <div style="padding:16px 16px 8px;">
+    <div class="cal-bar-wrap">
+      <div class="cal-numbers">
+        <div><div class="cal-current" id="cal-eaten">0</div><div style="font-size:12px;color:var(--muted);">kcal eaten</div></div>
+        <div style="text-align:right;"><div class="cal-target" id="cal-remain">3,660 remaining</div><div style="font-size:12px;color:var(--muted);">target: 3,660</div></div>
+      </div>
+      <div class="cal-prog-bg"><div class="cal-prog-fill" id="cal-prog" style="width:0%"></div></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Tap a meal to mark it done. Resets at midnight.</div>
+
+    <div id="meal-list"></div>
+
+    <button class="btn-secondary" style="width:100%;margin-top:4px;" onclick="resetMeals()">↺ Reset Today's Meals</button>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 3: WEIGHT TRACK ═══════════════ -->
+<div class="panel" id="tab-track">
+  <div class="section">
+    <div class="section-title">Weight Progress Chart</div>
+    <div class="card" style="padding:12px;">
+      <canvas id="weightChart" height="200"></canvas>
+      <div id="no-data-msg" style="text-align:center;color:var(--muted);font-size:13px;padding:20px 0;display:none;">
+        Log at least 2 weights to see chart
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Log Weight</div>
+    <div class="w-input-row">
+      <input type="number" id="weight-input2" placeholder="e.g. 51.2" step="0.1" min="40" max="120" inputmode="decimal">
+      <button class="btn-primary" onclick="logWeight2()">Log ✓</button>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:16px;">
+    <div class="section-title">History</div>
+    <div id="weight-log-list" style="padding-bottom:4px;"></div>
+    <button class="btn-danger" style="margin-top:8px;" onclick="clearWeightLog()">Clear All Weight Data</button>
+  </div>
+
+  <div class="section" style="margin-top:16px;">
+    <div class="section-title">Workout Log</div>
+    <div id="workout-log-list"></div>
+    <button class="btn-danger" style="margin-top:8px;" onclick="clearWorkoutLog()">Clear Workout Log</button>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 4: THE PLAN ═══════════════ -->
+<div class="panel" id="tab-plan">
+
+  <!-- Shopping List (interactive checkboxes) -->
+  <div class="section">
+    <div class="section-title">🛒 Weekly Shopping List</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Tap items to tick them off. Resets when you press Reset.</p>
+
+    <div class="card" id="shop-list-card" style="padding:12px 16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Protein</div>
+      <div class="shop-item" id="si-0" onclick="toggleShop(0)"><div class="shop-check" id="sc-0"></div><span>Boneless chicken thighs</span><span class="sq">2.8kg ~£12</span></div>
+      <div class="shop-item" id="si-1" onclick="toggleShop(1)"><div class="shop-check" id="sc-1"></div><span>Large eggs</span><span class="sq">2×6 pack ~£3.50</span></div>
+      <div class="shop-item" id="si-2" onclick="toggleShop(2)"><div class="shop-check" id="sc-2"></div><span>Protein yogurts (5-for-£5 ×2)</span><span class="sq">10 pots £10</span></div>
+      <div class="shop-item" id="si-3" onclick="toggleShop(3)"><div class="shop-check" id="sc-3"></div><span>Cheddar cheese</span><span class="sq">200g ~£1.50</span></div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px;">Carbs</div>
+      <div class="shop-item" id="si-4" onclick="toggleShop(4)"><div class="shop-check" id="sc-4"></div><span>Microwave rice packs (250g)</span><span class="sq">7 packs ~£7</span></div>
+      <div class="shop-item" id="si-5" onclick="toggleShop(5)"><div class="shop-check" id="sc-5"></div><span>Dried pasta</span><span class="sq">1kg ~£0.90</span></div>
+      <div class="shop-item" id="si-6" onclick="toggleShop(6)"><div class="shop-check" id="sc-6"></div><span>White bread</span><span class="sq">2 loaves ~£2</span></div>
+      <div class="shop-item" id="si-7" onclick="toggleShop(7)"><div class="shop-check" id="sc-7"></div><span>Bananas</span><span class="sq">7–10 ~£1</span></div>
+      <div class="shop-item" id="si-8" onclick="toggleShop(8)"><div class="shop-check" id="sc-8"></div><span>Granola (own brand)</span><span class="sq">500g ~£1.50</span></div>
+      <div class="shop-item" id="si-9" onclick="toggleShop(9)"><div class="shop-check" id="sc-9"></div><span>Digestive biscuits</span><span class="sq">2 packs ~£1.20</span></div>
+      <div class="shop-item" id="si-10" onclick="toggleShop(10)"><div class="shop-check" id="sc-10"></div><span>Pasta sauce (jar)</span><span class="sq">2 jars ~£2</span></div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px;">Dairy & Fats</div>
+      <div class="shop-item" id="si-11" onclick="toggleShop(11)"><div class="shop-check" id="sc-11"></div><span>Whole milk (2L)</span><span class="sq">4 bottles ~£5</span></div>
+      <div class="shop-item" id="si-12" onclick="toggleShop(12)"><div class="shop-check" id="sc-12"></div><span>Butter (250g)</span><span class="sq">1 block ~£1.80</span></div>
+      <div class="shop-item" id="si-13" onclick="toggleShop(13)"><div class="shop-check" id="sc-13"></div><span>Olive oil (500ml)</span><span class="sq">1 bottle ~£2.50</span></div>
+    </div>
+    <button class="btn-secondary" style="width:100%;margin-bottom:4px;" onclick="resetShopping()">↺ Reset Shopping List</button>
+  </div>
+
+  <!-- Prep Guide -->
+  <div class="section" style="margin-top:8px;">
+    <div class="section-title">⚙️ Sunday Prep Guide (~75 min)</div>
+    <div style="padding-bottom:8px;">
+      <div class="step"><div class="step-n">1</div><div class="step-c"><h4>Preheat Oven 200°C</h4><p>Season ALL 2.8kg chicken thighs with olive oil, salt, garlic powder, paprika. Lay on 2–3 trays.</p></div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-c"><h4>Bake Chicken (25–30 min)</h4><p>All at once. Internal temp 75°C. Cool fully before boxing — prevents sogginess.</p></div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-c"><h4>Cook Pasta in Bulk</h4><p>Boil 560g dry pasta once. Drain, toss with olive oil to stop sticking. Split into 7 containers.</p></div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-c"><h4>Portion 14 Containers</h4><p>7 lunch: 200g chicken (rice packs separate). 7 dinner: 200g chicken + 80g cooked pasta.</p></div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-c"><h4>Pre-Scoop Your Shakes</h4><p>Weigh 7× 135g Bulk 1000 into zip bags labelled Mon–Sun. Zero measuring all week.</p></div></div>
+      <div class="step"><div class="step-n">6</div><div class="step-c"><h4>Freeze Days 5–7</h4><p>Fridge: Mon–Thu containers. Freeze: Fri–Sun. Move to fridge Wednesday night.</p></div></div>
+    </div>
+  </div>
+
+  <!-- Appetite Ramp-Up -->
+  <div class="section" style="margin-top:8px;">
+    <div class="section-title">📈 Appetite Ramp-Up</div>
+    <div class="ramp-week"><div class="rw-head"><strong>Week 1</strong><span>~2,800 kcal</span></div><div class="rw-bar-bg"><div class="rw-bar-fill" style="width:56%"></div></div><div class="rw-note">Half shake, slightly smaller portions. Lock in the routine.</div></div>
+    <div class="ramp-week"><div class="rw-head"><strong>Week 2</strong><span>~3,200 kcal</span></div><div class="rw-bar-bg"><div class="rw-bar-fill" style="width:72%"></div></div><div class="rw-note">Full food portions. Still half shake.</div></div>
+    <div class="ramp-week"><div class="rw-head"><strong>Week 3</strong><span>~3,500 kcal</span></div><div class="rw-bar-bg"><div class="rw-bar-fill" style="width:88%"></div></div><div class="rw-note">Full plan. Appetite noticeably bigger by now.</div></div>
+    <div class="ramp-week"><div class="rw-head"><strong>Week 4+</strong><span>3,500–4,500 kcal</span></div><div class="rw-bar-bg"><div class="rw-bar-fill" style="width:100%"></div></div><div class="rw-note">If weight stalls → move to full shake serving (1,058 kcal).</div></div>
+  </div>
+
+  <!-- Appetite Tips -->
+  <div class="section" style="margin-top:8px;">
+    <div class="section-title">🧠 Appetite Tips</div>
+    <div class="tip"><div class="tip-i">⏰</div><div class="tip-c"><h4>Eat by the clock, not hunger</h4><p>Set 6 alarms. After 2–3 weeks your body demands food at those times.</p></div></div>
+    <div class="tip"><div class="tip-i">💧</div><div class="tip-c"><h4>No water before/during meals</h4><p>Drink between meals only. Adds 200–400 kcal of stomach capacity.</p></div></div>
+    <div class="tip"><div class="tip-i">🏋️</div><div class="tip-c"><h4>Train before biggest meal</h4><p>Exercise spikes hunger hormones 60–90 min post-workout.</p></div></div>
+    <div class="tip"><div class="tip-i">🚶</div><div class="tip-c"><h4>10-min walk after meals</h4><p>Speeds digestion, makes you hungry faster for next meal.</p></div></div>
+  </div>
+  <div style="height:16px;"></div>
+</div>
+
+<!-- ═══════════════ TAB 5: RULES ═══════════════ -->
+<div class="panel" id="tab-rules">
+  <div class="section">
+    <div class="section-title">⚡ 7 Non-Negotiable Rules</div>
+    <div class="rule"><div class="rule-n">1</div><p>Never skip a meal — missing 1 = 600+ kcal gone. No catch-up.</p></div>
+    <div class="rule"><div class="rule-n">2</div><p>Weigh every Monday morning — same time, after toilet, before eating.</p></div>
+    <div class="rule"><div class="rule-n">3</div><p>Weight not moving 5+ days → add 200–300 kcal (extra glass of milk or snack).</p></div>
+    <div class="rule"><div class="rule-n">4</div><p>Hit your protein every single day — everything else can vary, protein cannot.</p></div>
+    <div class="rule"><div class="rule-n">5</div><p>Rest days: eat the SAME amount. Muscles grow on rest days, not gym days.</p></div>
+    <div class="rule"><div class="rule-n">6</div><p>Every workout: add reps or weight vs last session. No progression = no muscle.</p></div>
+    <div class="rule"><div class="rule-n">7</div><p>Sleep 7–9 hours. No sleep = no growth hormone = wasted calories + wasted reps.</p></div>
+  </div>
+
+  <div class="section" style="margin-top:16px;">
+    <div class="section-title">🎯 Weekly Check-In</div>
+    <div class="card">
+      <div style="font-size:14px;line-height:2;color:var(--muted);">
+        <div>✅ Did you hit 3,500 kcal every day?</div>
+        <div>✅ Did you train 4 days this week?</div>
+        <div>✅ Did your weight go up vs last week?</div>
+        <div>✅ Did you add reps/weight to every exercise?</div>
+        <div>✅ Did you sleep 7–9 hours each night?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:8px;">
+    <div class="section-title">⚠️ Danger Zone</div>
+    <div class="card" style="border-color:#5a1a1a;">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Permanently deletes all tracked data. Cannot be undone.</p>
+      <button class="btn-danger" style="width:100%;padding:12px;" onclick="nukeAll()">🗑 Reset ALL Data</button>
+    </div>
+  </div>
+  <div style="height:16px;"></div>
+</div>
+
+<!-- TAB BAR -->
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('home',this)"><span class="ti">🏠</span>Home</button>
+  <button class="tab-btn" onclick="switchTab('meals',this)"><span class="ti">🍗</span>Meals</button>
+  <button class="tab-btn" onclick="switchTab('track',this)"><span class="ti">📊</span>Track</button>
+  <button class="tab-btn" onclick="switchTab('plan',this)"><span class="ti">📋</span>Plan</button>
+  <button class="tab-btn" onclick="switchTab('rules',this)"><span class="ti">⚡</span>Rules</button>
+</nav>
+
+<script>
+// ── DATA ──────────────────────────────────────────
+const MEALS = [
+  {name:"Scrambled Eggs on Toast + Milk", time:"8:00 AM", kcal:660, protein:28},
+  {name:"Protein Yogurt + Banana + Granola", time:"11:00 AM", kcal:360, protein:24},
+  {name:"Oven Chicken + Microwave Rice", time:"1:30 PM", kcal:860, protein:46},
+  {name:"Bulk 1000 Mass Gainer Shake", time:"4:00 PM", kcal:530, protein:27},
+  {name:"Chicken Pasta Bake", time:"7:00 PM", kcal:880, protein:52},
+  {name:"Digestives + Whole Milk", time:"9:30 PM", kcal:370, protein:10}
+];
+const TARGET_KCAL = 3660;
+const START_WEIGHT = 50;
+const GOAL_WEIGHT = 70;
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+// ── STORAGE HELPERS ───────────────────────────────
+function getWeightLog() { return JSON.parse(localStorage.getItem('weightLog')||'[]'); }
+function saveWeightLog(l) { localStorage.setItem('weightLog', JSON.stringify(l)); }
+function getMealChecks() {
+  const d = today();
+  const all = JSON.parse(localStorage.getItem('mealChecks')||'{}');
+  return all[d] || Array(6).fill(false);
+}
+function saveMealChecks(arr) {
+  const d = today();
+  const all = JSON.parse(localStorage.getItem('mealChecks')||'{}');
+  all[d] = arr;
+  // Keep only last 30 days
+  const keys = Object.keys(all).sort().slice(-30);
+  const trimmed = {};
+  keys.forEach(k => trimmed[k] = all[k]);
+  localStorage.setItem('mealChecks', JSON.stringify(trimmed));
+}
+function getWorkoutLog() { return JSON.parse(localStorage.getItem('workoutLog')||'[]'); }
+function saveWorkoutLog(l) { localStorage.setItem('workoutLog', JSON.stringify(l)); }
+function getShopChecks() { return JSON.parse(localStorage.getItem('shopChecks')||JSON.stringify(Array(14).fill(false))); }
+function saveShopChecks(a) { localStorage.setItem('shopChecks', JSON.stringify(a)); }
+
+// ── TABS ──────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='track') renderChart();
+  if(name==='meals') renderMeals();
+  if(name==='home') updateDash();
+  if(name==='track') renderWeightLog();
+}
+
+// ── MEALS ─────────────────────────────────────────
+function renderMeals() {
+  const checks = getMealChecks();
+  const el = document.getElementById('meal-list');
+  el.innerHTML = '';
+  MEALS.forEach((m,i) => {
+    const div = document.createElement('div');
+    div.className = 'meal-item' + (checks[i] ? ' done' : '');
+    div.onclick = () => toggleMeal(i);
+    div.innerHTML = `
+      <div class="meal-check">${checks[i]?'✓':''}</div>
+      <div class="meal-info">
+        <div class="mn">${m.name}</div>
+        <div class="mt">${m.time} · ${m.protein}g protein</div>
+      </div>
+      <div class="meal-kcal">${m.kcal} kcal</div>`;
+    el.appendChild(div);
+  });
+  updateCalBar(checks);
+  updateDash();
+}
+
+function toggleMeal(i) {
+  const checks = getMealChecks();
+  checks[i] = !checks[i];
+  saveMealChecks(checks);
+  // Update streak
+  updateStreak();
+  renderMeals();
+  showToast(checks[i] ? '✓ Meal logged!' : 'Meal unmarked');
+}
+
+function updateCalBar(checks) {
+  const eaten = checks.reduce((s,c,i) => s + (c ? MEALS[i].kcal : 0), 0);
+  const pct = Math.min(100, (eaten/TARGET_KCAL)*100);
+  document.getElementById('cal-eaten').textContent = eaten.toLocaleString();
+  document.getElementById('cal-remain').textContent = Math.max(0, TARGET_KCAL - eaten).toLocaleString() + ' remaining';
+  document.getElementById('cal-prog').style.width = pct + '%';
+}
+
+function resetMeals() {
+  saveMealChecks(Array(6).fill(false));
+  renderMeals();
+  showToast('Meals reset');
+}
+
+// ── WEIGHT ────────────────────────────────────────
+function logWeight() {
+  const v = parseFloat(document.getElementById('weight-input').value);
+  if(!v || v < 40 || v > 120) { showToast('Enter valid weight'); return; }
+  _logWeight(v);
+  document.getElementById('weight-input').value = '';
+}
+function logWeight2() {
+  const v = parseFloat(document.getElementById('weight-input2').value);
+  if(!v || v < 40 || v > 120) { showToast('Enter valid weight'); return; }
+  _logWeight(v);
+  document.getElementById('weight-input2').value = '';
+  renderChart();
+  renderWeightLog();
+}
+function _logWeight(v) {
+  const log = getWeightLog();
+  const d = today();
+  const idx = log.findIndex(e => e.date === d);
+  if(idx >= 0) log[idx].weight = v; else log.push({date:d, weight:v});
+  log.sort((a,b) => a.date.localeCompare(b.date));
+  saveWeightLog(log);
+  updateDash();
+  showToast('⚖️ Weight logged: ' + v + 'kg');
+}
+
+function renderWeightLog() {
+  const log = getWeightLog().slice().reverse();
+  const el = document.getElementById('weight-log-list');
+  if(!log.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No weights logged yet.</p>'; return; }
+  el.innerHTML = log.map((e,i,a) => {
+    const prev = a[i+1];
+    let diff = '';
+    if(prev) {
+      const d = (e.weight - prev.weight).toFixed(1);
+      diff = `<span class="wlog-diff ${d>=0?'diff-up':'diff-down'}">${d>=0?'+':''}${d}kg</span>`;
+    }
+    return `<div class="wlog-item">
+      <span class="wd">${e.date}</span>
+      <span class="wv">${e.weight}kg</span>
+      ${diff}
+      <button class="btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteWeight('${e.date}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteWeight(date) {
+  let log = getWeightLog().filter(e => e.date !== date);
+  saveWeightLog(log);
+  renderChart();
+  renderWeightLog();
+  updateDash();
+}
+
+function clearWeightLog() {
+  if(!confirm('Delete all weight data?')) return;
+  localStorage.removeItem('weightLog');
+  renderChart();
+  renderWeightLog();
+  updateDash();
+  showToast('Weight data cleared');
+}
+
+// ── CHART ─────────────────────────────────────────
+function renderChart() {
+  const log = getWeightLog();
+  const canvas = document.getElementById('weightChart');
+  const noData = document.getElementById('no-data-msg');
+  if(log.length < 2) {
+    canvas.style.display = 'none';
+    noData.style.display = 'block';
+    return;
+  }
+  canvas.style.display = 'block';
+  noData.style.display = 'none';
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 24;
+  const H = 200;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = {t:20, r:16, b:36, l:44};
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
+
+  const weights = log.map(e => e.weight);
+  const minW = Math.min(...weights, START_WEIGHT) - 1;
+  const maxW = Math.max(...weights, GOAL_WEIGHT) + 1;
+
+  const xScale = i => pad.l + (i / (log.length - 1)) * cw;
+  const yScale = w => pad.t + ch - ((w - minW) / (maxW - minW)) * ch;
+
+  // Grid
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 1;
+  for(let i=0; i<=4; i++) {
+    const y = pad.t + (ch/4)*i;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l+cw, y); ctx.stroke();
+    const val = (maxW - ((maxW-minW)/4)*i).toFixed(1);
+    ctx.fillStyle = '#666'; ctx.font = '11px -apple-system'; ctx.textAlign = 'right';
+    ctx.fillText(val+'kg', pad.l-6, y+4);
+  }
+
+  // Goal line
+  const gy = yScale(GOAL_WEIGHT);
+  ctx.setLineDash([4,4]); ctx.strokeStyle = '#f5a623'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l+cw, gy); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f5a623'; ctx.font = '10px -apple-system'; ctx.textAlign = 'left';
+  ctx.fillText('Goal 70kg', pad.l+4, gy-4);
+
+  // Fill under line
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t+ch);
+  grad.addColorStop(0, 'rgba(76,175,80,0.4)');
+  grad.addColorStop(1, 'rgba(76,175,80,0.0)');
+  ctx.beginPath();
+  ctx.moveTo(xScale(0), yScale(log[0].weight));
+  log.forEach((e,i) => { if(i>0) ctx.lineTo(xScale(i), yScale(e.weight)); });
+  ctx.lineTo(xScale(log.length-1), pad.t+ch);
+  ctx.lineTo(xScale(0), pad.t+ch);
+  ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  log.forEach((e,i) => {
+    i===0 ? ctx.moveTo(xScale(i), yScale(e.weight)) : ctx.lineTo(xScale(i), yScale(e.weight));
+  });
+  ctx.stroke();
+
+  // Dots + labels
+  log.forEach((e,i) => {
+    const x = xScale(i), y = yScale(e.weight);
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2);
+    ctx.fillStyle = '#4caf50'; ctx.fill();
+    ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 2; ctx.stroke();
+    if(i===0 || i===log.length-1) {
+      ctx.fillStyle = '#f0f0f0'; ctx.font = 'bold 11px -apple-system'; ctx.textAlign = 'center';
+      ctx.fillText(e.weight+'kg', x, y-10);
+    }
+  });
+
+  // X axis labels
+  ctx.fillStyle = '#555'; ctx.font = '10px -apple-system'; ctx.textAlign = 'center';
+  const step = Math.max(1, Math.floor(log.length/5));
+  log.forEach((e,i) => {
+    if(i % step === 0 || i === log.length-1) {
+      ctx.fillText(e.date.slice(5), xScale(i), H - pad.b + 16);
+    }
+  });
+}
+
+// ── WORKOUT ───────────────────────────────────────
+function toggleWorkout() {
+  const log = getWorkoutLog();
+  const d = today();
+  const btn = document.getElementById('workout-btn');
+  if(log.includes(d)) {
+    const idx = log.indexOf(d);
+    log.splice(idx, 1);
+    saveWorkoutLog(log);
+    btn.className = 'workout-btn off';
+    btn.textContent = '🏋️ Mark Today\'s Workout Done';
+    showToast('Workout unmarked');
+  } else {
+    log.push(d);
+    saveWorkoutLog(log);
+    btn.className = 'workout-btn on';
+    btn.textContent = '✅ Workout Done!';
+    showToast('💪 Workout logged!');
+  }
+  renderWorkoutLog();
+  updateDash();
+}
+
+function renderWorkoutLog() {
+  const log = getWorkoutLog().slice().reverse().slice(0, 14);
+  const el = document.getElementById('workout-log-list');
+  if(!log.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No workouts logged yet.</p>'; return; }
+  el.innerHTML = log.map(d => `
+    <div class="wlog-item">
+      <span class="wd">${d}</span>
+      <span style="color:var(--green);font-weight:700;">✅ Trained</span>
+      <button class="btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteWorkout('${d}')">✕</button>
+    </div>`).join('');
+}
+
+function deleteWorkout(d) {
+  let log = getWorkoutLog().filter(e => e !== d);
+  saveWorkoutLog(log);
+  renderWorkoutLog();
+  updateDash();
+}
+
+function clearWorkoutLog() {
+  if(!confirm('Delete all workout data?')) return;
+  localStorage.removeItem('workoutLog');
+  renderWorkoutLog();
+  updateDash();
+  showToast('Workout data cleared');
+}
+
+// ── SHOPPING ──────────────────────────────────────
+function toggleShop(i) {
+  const arr = getShopChecks();
+  arr[i] = !arr[i];
+  saveShopChecks(arr);
+  const item = document.getElementById('si-'+i);
+  const check = document.getElementById('sc-'+i);
+  item.classList.toggle('done', arr[i]);
+  check.textContent = arr[i] ? '✓' : '';
+}
+
+function resetShopping() {
+  saveShopChecks(Array(14).fill(false));
+  for(let i=0;i<14;i++) {
+    const item = document.getElementById('si-'+i);
+    const check = document.getElementById('sc-'+i);
+    if(item) { item.classList.remove('done'); check.textContent = ''; }
+  }
+  showToast('Shopping list reset');
+}
+
+function loadShopChecks() {
+  const arr = getShopChecks();
+  arr.forEach((v,i) => {
+    const item = document.getElementById('si-'+i);
+    const check = document.getElementById('sc-'+i);
+    if(item) { item.classList.toggle('done', v); check.textContent = v ? '✓' : ''; }
+  });
+}
+
+// ── DASHBOARD ─────────────────────────────────────
+function updateDash() {
+  const log = getWeightLog();
+  const latest = log.length ? log[log.length-1].weight : START_WEIGHT;
+  const gained = Math.max(0, latest - START_WEIGHT);
+  const pct = Math.min(100, (gained / (GOAL_WEIGHT - START_WEIGHT)) * 100);
+
+  document.getElementById('curr-weight-disp').textContent = latest + 'kg';
+  document.getElementById('weight-prog-bar').style.width = pct + '%';
+  document.getElementById('weight-prog-pct').textContent = pct.toFixed(1) + '% to goal · ' + gained.toFixed(1) + 'kg gained';
+  document.getElementById('dash-gained').textContent = '+' + gained.toFixed(1) + 'kg';
+
+  const checks = getMealChecks();
+  const eaten = checks.reduce((s,c,i) => s+(c?MEALS[i].kcal:0), 0);
+  const mealsDone = checks.filter(Boolean).length;
+  document.getElementById('dash-kcal').textContent = eaten.toLocaleString();
+  document.getElementById('dash-meals').textContent = mealsDone + '/6';
+
+  // Workout button state
+  const wLog = getWorkoutLog();
+  const btn = document.getElementById('workout-btn');
+  if(wLog.includes(today())) {
+    btn.className = 'workout-btn on';
+    btn.textContent = '✅ Workout Done Today!';
+  } else {
+    btn.className = 'workout-btn off';
+    btn.textContent = '🏋️ Mark Today\'s Workout Done';
+  }
+
+  // Streak
+  document.getElementById('dash-streak').textContent = calcStreak() + ' 🔥';
+}
+
+function calcStreak() {
+  const checks = JSON.parse(localStorage.getItem('mealChecks')||'{}');
+  let streak = 0;
+  let d = new Date();
+  for(let i=0;i<60;i++) {
+    const key = d.toISOString().slice(0,10);
+    const dayChecks = checks[key];
+    if(dayChecks && dayChecks.filter(Boolean).length >= 5) streak++;
+    else if(i > 0) break;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+function updateStreak() {
+  document.getElementById('dash-streak').textContent = calcStreak() + ' 🔥';
+}
+
+// ── TOAST ─────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ── NUKE ──────────────────────────────────────────
+function nukeAll() {
+  if(!confirm('⚠️ Delete ALL tracked data? This cannot be undone.')) return;
+  ['weightLog','mealChecks','workoutLog','shopChecks'].forEach(k => localStorage.removeItem(k));
+  renderMeals();
+  renderWeightLog();
+  renderWorkoutLog();
+  loadShopChecks();
+  updateDash();
+  showToast('All data cleared');
+}
+
+// ── INIT ──────────────────────────────────────────
+renderMeals();
+loadShopChecks();
+updateDash();
+renderWorkoutLog();
+</script>
+</body>
+</html>
