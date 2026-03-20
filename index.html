@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>Kublai — Bulk Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #000; --surface: #0a0a0a; --card: #111; --border: #1a1a1a;
+  --text: #e8e8e8; --muted: #555; --faint: #333;
+  --accent: #8b5cf6; --accent-dim: rgba(139,92,246,0.1);
+  --green: #3a8a3e; --red: #a83a3a;
+  --radius: 12px; --tab-h: 64px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:'DM Sans',system-ui,-apple-system,sans-serif;
+  font-size:15px;line-height:1.5;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased}
+
+/* TABS */
+.tab-bar{position:fixed;bottom:0;left:0;right:0;height:var(--tab-h);
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);display:flex;z-index:200;
+  padding-bottom:env(safe-area-inset-bottom)}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;background:none;border:none;
+  color:var(--muted);font-size:10px;font-weight:500;letter-spacing:0.5px;
+  cursor:pointer;transition:color 0.2s;font-family:inherit}
+.tab-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab-btn.active{color:var(--accent)}
+
+/* PANELS */
+.panel{display:none;height:calc(100vh - var(--tab-h));overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+.panel.active{display:block}
+
+/* COMMON */
+.sec{padding:24px 20px 0}
+.sec-label{font-size:11px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;margin-bottom:10px}
+
+/* HERO */
+.hero{padding:32px 20px 28px;border-bottom:1px solid var(--border)}
+.hero-sub{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.hero h1{font-size:32px;font-weight:800;margin-top:4px;letter-spacing:-0.5px}
+.hero h1 b{color:var(--accent);font-weight:800}
+.prog-wrap{margin-top:20px}
+.prog-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
+.prog-labels strong{color:var(--text);font-weight:600}
+.prog-bg{background:var(--border);border-radius:20px;height:6px;overflow:hidden}
+.prog-fill{height:100%;border-radius:20px;background:var(--accent);transition:width 0.6s ease}
+.prog-sub{text-align:center;font-size:11px;color:var(--muted);margin-top:6px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:20px}
+.s-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.s-val{font-size:28px;font-weight:800;letter-spacing:-0.5px}
+.s-lbl{font-size:11px;color:var(--muted);margin-top:2px;font-weight:500}
+.s-accent .s-val{color:var(--accent)}
+.s-white .s-val{color:var(--text)}
+
+/* INPUTS */
+.input-row{display:flex;gap:10px}
+.input-row input{flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;color:var(--text);font-size:16px;
+  font-weight:600;outline:none;font-family:inherit;-webkit-appearance:none}
+.input-row input:focus{border-color:var(--accent)}
+.input-row input::placeholder{color:var(--faint)}
+.btn{border:none;border-radius:10px;padding:14px 22px;font-size:14px;
+  font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s}
+.btn:active{opacity:0.7}
+.btn-a{background:var(--accent);color:#000}
+.btn-s{background:var(--card);color:var(--muted);border:1px solid var(--border)}
+.btn-d{background:transparent;color:var(--red);border:1px solid rgba(168,58,58,0.3);
+  font-size:12px;padding:8px 14px;border-radius:8px}
+
+/* WORKOUT */
+.wo-btn{width:100%;padding:16px;border-radius:var(--radius);font-size:15px;
+  font-weight:700;cursor:pointer;border:1px solid;transition:all 0.2s;
+  font-family:inherit;background:var(--card);border-color:var(--border);color:var(--muted)}
+.wo-btn.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+/* MEALS */
+.meal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;
+  cursor:pointer;transition:all 0.15s;-webkit-user-select:none;user-select:none}
+.meal:active{transform:scale(0.98)}
+.meal.done{border-color:rgba(58,138,62,0.3);background:rgba(58,138,62,0.05)}
+.m-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.meal.done .m-check{background:var(--green);border-color:var(--green)}
+.m-check svg{width:14px;height:14px;stroke:#000;stroke-width:2.5;fill:none;opacity:0;transition:opacity 0.15s}
+.meal.done .m-check svg{opacity:1}
+.m-info{flex:1;min-width:0}
+.m-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meal.done .m-name{color:var(--muted);text-decoration:line-through}
+.m-time{font-size:12px;color:var(--muted);margin-top:1px}
+.m-kcal{font-size:13px;font-weight:700;color:var(--muted);flex-shrink:0}
+.meal.done .m-kcal{color:var(--green)}
+
+/* CAL BAR */
+.cal-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.cal-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.cal-num{font-size:36px;font-weight:800;letter-spacing:-1px}
+.cal-of{font-size:13px;color:var(--muted);font-weight:500}
+.cal-prog-bg{background:var(--border);border-radius:20px;height:5px;overflow:hidden}
+.cal-prog-fill{height:100%;border-radius:20px;background:var(--accent);transition:width 0.3s}
+
+/* WEIGHT LOG */
+.wl-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);font-size:14px}
+.wl-date{color:var(--muted);font-size:12px;flex:1}
+.wl-val{font-weight:700;margin-right:12px}
+.wl-diff{font-size:12px;font-weight:600;margin-right:12px}
+.wl-up{color:var(--green)}.wl-dn{color:var(--red)}
+
+/* SHOP */
+.shop{display:flex;align-items:center;gap:12px;padding:11px 0;
+  border-bottom:1px solid var(--border);cursor:pointer;font-size:14px;-webkit-user-select:none}
+.shop:last-child{border-bottom:none}
+.sh-box{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--faint);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.shop.done .sh-box{background:var(--accent);border-color:var(--accent)}
+.sh-box svg{width:12px;height:12px;stroke:#000;stroke-width:3;fill:none;opacity:0}
+.shop.done .sh-box svg{opacity:1}
+.shop.done .sh-name{color:var(--muted);text-decoration:line-through}
+.sh-name{flex:1}
+.sh-qty{color:var(--muted);font-size:12px;font-weight:600;flex-shrink:0}
+.shop-cat{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
+  letter-spacing:1.2px;padding:14px 0 6px}
+.shop-cat:first-child{padding-top:0}
+
+/* STEPS */
+.step{display:flex;gap:14px;margin-bottom:16px}
+.step-n{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#000;
+  font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-c h4{font-size:14px;font-weight:700;margin-bottom:2px}
+.step-c p{font-size:13px;color:var(--muted)}
+
+/* RAMP */
+.ramp{padding:12px 0;border-bottom:1px solid var(--border)}
+.ramp:last-child{border-bottom:none}
+.ramp-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px}
+.ramp-top strong{font-weight:700}
+.ramp-top span{color:var(--accent);font-weight:700;font-size:13px}
+.ramp-bar{background:var(--border);border-radius:20px;height:4px;overflow:hidden}
+.ramp-fill{height:100%;border-radius:20px;background:var(--accent)}
+.ramp-note{font-size:12px;color:var(--muted);margin-top:6px}
+
+/* RULES */
+.rule{padding:16px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:8px;display:flex;gap:14px;align-items:baseline}
+.rule-n{font-size:20px;font-weight:800;color:var(--accent);flex-shrink:0;width:24px}
+.rule p{font-size:14px;line-height:1.6;color:var(--text)}
+
+/* TIP */
+.tip{padding:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:8px}
+.tip h4{font-size:13px;font-weight:700;margin-bottom:3px}
+.tip p{font-size:13px;color:var(--muted)}
+
+/* CANVAS */
+canvas{width:100%;display:block}
+
+/* TOAST */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);
+  background:var(--accent);color:#000;padding:10px 24px;border-radius:30px;
+  font-weight:700;font-size:13px;transition:transform 0.3s ease;z-index:999;
+  white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* TIMELINE */
+.tl-row{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
+.tl-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:6px}
+.tl-text{font-size:13px;color:var(--muted);line-height:1.5}
+.tl-text strong{color:var(--text);font-weight:600}
+
+/* CHECK-IN */
+.ci{font-size:14px;color:var(--muted);padding:8px 0;border-bottom:1px solid var(--border)}
+.ci:last-child{border-bottom:none}
+
+/* SCROLLBAR */
+.panel::-webkit-scrollbar{width:0;display:none}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══ TAB 1: HOME ═══ -->
+<div class="panel active" id="tab-home">
+  <div class="hero">
+    <div class="hero-sub">Dirty Bulk Tracker</div>
+    <h1>50 → <b>70kg</b></h1>
+    <div class="prog-wrap">
+      <div class="prog-labels">
+        <span>Start <strong>50kg</strong></span>
+        <span>Now <strong id="hw-curr">50kg</strong></span>
+        <span>Goal <strong>70kg</strong></span>
+      </div>
+      <div class="prog-bg"><div class="prog-fill" id="hw-bar" style="width:0%"></div></div>
+      <div class="prog-sub" id="hw-pct">0% complete</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="s-card s-accent"><div class="s-val" id="d-kcal">0</div><div class="s-lbl">kcal today</div></div>
+    <div class="s-card s-white"><div class="s-val" id="d-meals">0/6</div><div class="s-lbl">meals eaten</div></div>
+    <div class="s-card s-accent"><div class="s-val" id="d-gain">+0kg</div><div class="s-lbl">total gained</div></div>
+    <div class="s-card s-white"><div class="s-val" id="d-streak">0</div><div class="s-lbl">day streak</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Log Weight</div>
+    <div class="input-row">
+      <input type="number" id="w-in1" placeholder="e.g. 50.5" step="0.1" min="40" max="120" inputmode="decimal">
+      <button class="btn btn-a" onclick="logW(1)">Log</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">Every morning, before eating.</p>
+  </div>
+
+  <div class="sec" style="padding-bottom:24px">
+    <div class="sec-label">Training</div>
+    <button class="wo-btn" id="wo-btn" onclick="toggleWo()">Mark Workout Done</button>
+  </div>
+
+  <div class="sec" style="padding-bottom:30px">
+    <div class="sec-label">4-Month Timeline</div>
+    <div class="tl-row"><div class="tl-dot"></div><div class="tl-text"><strong>Month 1</strong> — Lock in routine, +3–5kg on the scale</div></div>
+    <div class="tl-row"><div class="tl-dot"></div><div class="tl-text"><strong>Month 2</strong> — Increase all weights, +5–6kg</div></div>
+    <div class="tl-row"><div class="tl-dot"></div><div class="tl-text"><strong>Month 3</strong> — Max progressive overload, +5–6kg</div></div>
+    <div class="tl-row"><div class="tl-dot" style="background:var(--green)"></div><div class="tl-text"><strong>Month 4</strong> — Push past 70kg</div></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 2: MEALS ═══ -->
+<div class="panel" id="tab-meals">
+  <div style="padding:20px">
+    <div class="cal-wrap">
+      <div class="cal-top">
+        <div class="cal-num" id="c-eaten">0</div>
+        <div class="cal-of"><span id="c-remain">3,660</span> remaining</div>
+      </div>
+      <div class="cal-prog-bg"><div class="cal-prog-fill" id="c-bar" style="width:0%"></div></div>
+    </div>
+
+    <div id="meal-list"></div>
+
+    <button class="btn btn-s" style="width:100%;margin-top:8px" onclick="resetMeals()">Reset Meals</button>
+  </div>
+</div>
+
+<!-- ═══ TAB 3: TRACK ═══ -->
+<div class="panel" id="tab-track">
+  <div class="sec">
+    <div class="sec-label">Weight Chart</div>
+    <div class="card" style="padding:12px">
+      <canvas id="chart" height="200"></canvas>
+      <div id="no-data" style="text-align:center;color:var(--muted);font-size:13px;padding:30px 0;display:none">
+        Log at least 2 weights to see chart
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Log Weight</div>
+    <div class="input-row">
+      <input type="number" id="w-in2" placeholder="e.g. 51.2" step="0.1" min="40" max="120" inputmode="decimal">
+      <button class="btn btn-a" onclick="logW(2)">Log</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Weight History</div>
+    <div id="w-log"></div>
+    <button class="btn-d" style="margin-top:10px" onclick="clearWLog()">Clear Weight Data</button>
+  </div>
+
+  <div class="sec" style="padding-bottom:30px">
+    <div class="sec-label">Workout History</div>
+    <div id="wo-log"></div>
+    <button class="btn-d" style="margin-top:10px" onclick="clearWoLog()">Clear Workout Data</button>
+  </div>
+</div>
+
+<!-- ═══ TAB 4: PLAN ═══ -->
+<div class="panel" id="tab-plan">
+  <div class="sec">
+    <div class="sec-label">Weekly Shopping List</div>
+    <div class="card" style="padding:4px 16px 8px" id="shop-card"></div>
+    <button class="btn btn-s" style="width:100%;margin-top:4px" onclick="resetShop()">Reset List</button>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Sunday Prep — ~75 min</div>
+    <div class="step"><div class="step-n">1</div><div class="step-c"><h4>Preheat Oven 200°C</h4><p>Season all 2.8kg chicken thighs — olive oil, salt, garlic powder, paprika. Lay on trays.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-c"><h4>Bake Chicken 25–30 min</h4><p>All at once. Internal temp 75°C. Cool fully before boxing.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-c"><h4>Cook Pasta in Bulk</h4><p>Boil 560g dry pasta. Drain, toss with olive oil. Split into 7 containers.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-c"><h4>Portion 14 Containers</h4><p>7 lunch: 200g chicken + rice pack label. 7 dinner: 200g chicken + 80g cooked pasta.</p></div></div>
+    <div class="step"><div class="step-n">5</div><div class="step-c"><h4>Pre-Scoop Shakes</h4><p>Weigh 7× 135g Bulk 1000 into bags labelled Mon–Sun.</p></div></div>
+    <div class="step"><div class="step-n">6</div><div class="step-c"><h4>Freeze Days 5–7</h4><p>Fridge: Mon–Thu. Freeze: Fri–Sun. Move to fridge Wednesday night.</p></div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Appetite Ramp-Up</div>
+    <div class="card" style="padding:4px 16px 12px">
+      <div class="ramp"><div class="ramp-top"><strong>Week 1</strong><span>~2,800 kcal</span></div><div class="ramp-bar"><div class="ramp-fill" style="width:50%"></div></div><div class="ramp-note">Half shake, smaller portions. Lock in the routine.</div></div>
+      <div class="ramp"><div class="ramp-top"><strong>Week 2</strong><span>~3,200 kcal</span></div><div class="ramp-bar"><div class="ramp-fill" style="width:70%"></div></div><div class="ramp-note">Full food portions. Still half shake.</div></div>
+      <div class="ramp"><div class="ramp-top"><strong>Week 3</strong><span>~3,500 kcal</span></div><div class="ramp-bar"><div class="ramp-fill" style="width:88%"></div></div><div class="ramp-note">Full plan as written. Appetite should be noticeably bigger.</div></div>
+      <div class="ramp"><div class="ramp-top"><strong>Week 4+</strong><span>~3,660–3,900 kcal</span></div><div class="ramp-bar"><div class="ramp-fill" style="width:100%"></div></div><div class="ramp-note">If weight stalls, move to full shake serving. Cap at ~3,900.</div></div>
+    </div>
+  </div>
+
+  <div class="sec" style="padding-bottom:30px">
+    <div class="sec-label">Appetite Tips</div>
+    <div class="tip"><h4>Eat by the clock, not hunger</h4><p>Set 6 alarms. After 2–3 weeks your body demands food at those times.</p></div>
+    <div class="tip"><h4>No water before or during meals</h4><p>Drink between meals only. Adds 200–400 kcal of stomach capacity.</p></div>
+    <div class="tip"><h4>Train before your biggest meal</h4><p>Exercise spikes hunger hormones for 60–90 min post-workout.</p></div>
+    <div class="tip"><h4>10-min walk after meals</h4><p>Speeds digestion. Hungry faster for the next meal.</p></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 5: RULES ═══ -->
+<div class="panel" id="tab-rules">
+  <div class="sec">
+    <div class="sec-label">Non-Negotiable Rules</div>
+    <div class="rule"><div class="rule-n">1</div><p>Never skip a meal. Missing one = 600+ kcal gone. No catch-up.</p></div>
+    <div class="rule"><div class="rule-n">2</div><p>Weigh every Monday morning. Same time, after toilet, before eating.</p></div>
+    <div class="rule"><div class="rule-n">3</div><p>Weight not moving 5+ days → add 200–300 kcal.</p></div>
+    <div class="rule"><div class="rule-n">4</div><p>Hit protein every single day. Everything else can vary, protein cannot.</p></div>
+    <div class="rule"><div class="rule-n">5</div><p>Rest days: eat the same amount. Muscles grow on rest days.</p></div>
+    <div class="rule"><div class="rule-n">6</div><p>Every workout: add reps or weight vs last session.</p></div>
+    <div class="rule"><div class="rule-n">7</div><p>Sleep 7–9 hours. No sleep = no growth hormone.</p></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Weekly Check-In</div>
+    <div class="card" style="padding:12px 16px">
+      <div class="ci">Hit 3,660 kcal every day?</div>
+      <div class="ci">Trained 4 days this week?</div>
+      <div class="ci">Weight up vs last week?</div>
+      <div class="ci">Added reps or weight to every exercise?</div>
+      <div class="ci">Slept 7–9 hours each night?</div>
+    </div>
+  </div>
+
+  <div class="sec" style="padding-bottom:30px">
+    <div class="sec-label">Danger Zone</div>
+    <div class="card" style="border-color:rgba(168,58,58,0.3)">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Permanently deletes all tracked data.</p>
+      <button class="btn-d" style="width:100%;padding:12px" onclick="nukeAll()">Reset All Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="go('home',this)">
+    <svg><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>Home
+  </button>
+  <button class="tab-btn" onclick="go('meals',this)">
+    <svg><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 0v4m0-4h4m-4 0H8"/></svg>Meals
+  </button>
+  <button class="tab-btn" onclick="go('track',this)">
+    <svg><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Track
+  </button>
+  <button class="tab-btn" onclick="go('plan',this)">
+    <svg><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>Plan
+  </button>
+  <button class="tab-btn" onclick="go('rules',this)">
+    <svg><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Rules
+  </button>
+</nav>
+
+<script>
+const MEALS=[
+  {n:"Scrambled Eggs on Toast + Milk",t:"8:00 AM",k:660,p:28},
+  {n:"Protein Yogurt + Banana + Granola",t:"11:00 AM",k:360,p:24},
+  {n:"Oven Chicken + Microwave Rice",t:"1:30 PM",k:860,p:46},
+  {n:"Bulk 1000 Mass Gainer Shake",t:"4:00 PM",k:530,p:27},
+  {n:"Chicken Pasta Bake",t:"7:00 PM",k:880,p:52},
+  {n:"Digestives + Whole Milk",t:"9:30 PM",k:370,p:10}
+];
+const TGT=3660,SW=50,GW=70;
+const SHOP=[
+  {cat:"Protein"},
+  {n:"Boneless chicken thighs",q:"2.8kg — ~£12"},
+  {n:"Large eggs",q:"2×6 pack — ~£3.50"},
+  {n:"Protein yogurts",q:"7 pots — ~£7"},
+  {n:"Cheddar cheese",q:"200g — ~£1.50"},
+  {cat:"Carbs"},
+  {n:"Microwave rice packs",q:"7 packs — ~£7"},
+  {n:"Dried pasta",q:"1kg — ~£0.90"},
+  {n:"White bread",q:"2 loaves — ~£2"},
+  {n:"Bananas",q:"7–10 — ~£1"},
+  {n:"Granola",q:"500g — ~£1.50"},
+  {n:"Digestive biscuits",q:"2 packs — ~£1.20"},
+  {n:"Pasta sauce",q:"2 jars — ~£2"},
+  {cat:"Dairy & Fats"},
+  {n:"Whole milk 2L",q:"4 bottles — ~£5"},
+  {n:"Butter",q:"250g — ~£1.80"},
+  {n:"Olive oil",q:"500ml — ~£2.50"}
+];
+const CHK='<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function td(){return new Date().toISOString().slice(0,10)}
+
+// Storage
+function gW(){return JSON.parse(localStorage.getItem('wl')||'[]')}
+function sW(l){localStorage.setItem('wl',JSON.stringify(l))}
+function gM(){const a=JSON.parse(localStorage.getItem('mc')||'{}');return a[td()]||Array(6).fill(false)}
+function sM(arr){const a=JSON.parse(localStorage.getItem('mc')||'{}');a[td()]=arr;const k=Object.keys(a).sort().slice(-30);const t={};k.forEach(x=>t[x]=a[x]);localStorage.setItem('mc',JSON.stringify(t))}
+function gWo(){return JSON.parse(localStorage.getItem('wol')||'[]')}
+function sWo(l){localStorage.setItem('wol',JSON.stringify(l))}
+function gSh(){return JSON.parse(localStorage.getItem('sc')||'[]')}
+function sSh(a){localStorage.setItem('sc',JSON.stringify(a))}
+
+// Tabs
+function go(name,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='track'){renderChart();renderWLog();renderWoLog()}
+  if(name==='meals')renderMeals();
+  if(name==='home')updDash();
+}
+
+// Meals
+function renderMeals(){
+  const c=gM(),el=document.getElementById('meal-list');
+  el.innerHTML=MEALS.map((m,i)=>`
+    <div class="meal${c[i]?' done':''}" onclick="togMeal(${i})">
+      <div class="m-check">${CHK}</div>
+      <div class="m-info"><div class="m-name">${m.n}</div><div class="m-time">${m.t} · ${m.p}g protein</div></div>
+      <div class="m-kcal">${m.k}</div>
+    </div>`).join('');
+  updCalBar(c);updDash();
+}
+function togMeal(i){const c=gM();c[i]=!c[i];sM(c);renderMeals();toast(c[i]?'Meal logged':'Meal unmarked')}
+function updCalBar(c){
+  const e=c.reduce((s,v,i)=>s+(v?MEALS[i].k:0),0),p=Math.min(100,e/TGT*100);
+  document.getElementById('c-eaten').textContent=e.toLocaleString();
+  document.getElementById('c-remain').textContent=Math.max(0,TGT-e).toLocaleString();
+  document.getElementById('c-bar').style.width=p+'%';
+}
+function resetMeals(){sM(Array(6).fill(false));renderMeals();toast('Meals reset')}
+
+// Weight
+function logW(n){
+  const inp=document.getElementById('w-in'+n),v=parseFloat(inp.value);
+  if(!v||v<40||v>120){toast('Enter valid weight');return}
+  const l=gW(),d=td(),idx=l.findIndex(e=>e.d===d);
+  if(idx>=0)l[idx].w=v;else l.push({d,w:v});
+  l.sort((a,b)=>a.d.localeCompare(b.d));sW(l);inp.value='';
+  updDash();if(n===2){renderChart();renderWLog()}
+  toast('Weight logged: '+v+'kg');
+}
+function renderWLog(){
+  const l=gW().slice().reverse(),el=document.getElementById('w-log');
+  if(!l.length){el.innerHTML='<p style="color:var(--muted);font-size:13px">No weights logged yet.</p>';return}
+  el.innerHTML=l.map((e,i,a)=>{
+    const prev=a[i+1];let df='';
+    if(prev){const d=(e.w-prev.w).toFixed(1);df=`<span class="wl-diff ${d>=0?'wl-up':'wl-dn'}">${d>=0?'+':''}${d}kg</span>`}
+    return`<div class="wl-item"><span class="wl-date">${e.d}</span><span class="wl-val">${e.w}kg</span>${df}<button class="btn-d" style="padding:4px 8px;font-size:11px" onclick="delW('${e.d}')">✕</button></div>`
+  }).join('');
+}
+function delW(d){sW(gW().filter(e=>e.d!==d));renderChart();renderWLog();updDash()}
+function clearWLog(){if(!confirm('Delete all weight data?'))return;localStorage.removeItem('wl');renderChart();renderWLog();updDash();toast('Weight data cleared')}
+
+// Chart
+function renderChart(){
+  const l=gW(),cv=document.getElementById('chart'),nd=document.getElementById('no-data');
+  if(l.length<2){cv.style.display='none';nd.style.display='block';return}
+  cv.style.display='block';nd.style.display='none';
+  const dpr=window.devicePixelRatio||1,W=cv.parentElement.clientWidth-24,H=200;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  const pad={t:20,r:16,b:36,l:44},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  const ws=l.map(e=>e.w),mn=Math.min(...ws,SW)-1,mx=Math.max(...ws,GW)+1;
+  const xS=i=>pad.l+(i/(l.length-1))*cw,yS=w=>pad.t+ch-((w-mn)/(mx-mn))*ch;
+
+  // Grid
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(ch/4)*i;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
+    ctx.fillStyle='#444';ctx.font='11px DM Sans,system-ui';ctx.textAlign='right';
+    ctx.fillText((mx-((mx-mn)/4)*i).toFixed(1)+'kg',pad.l-6,y+4);
+  }
+
+  // Goal line
+  const gy=yS(GW);ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(139,92,246,0.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+cw,gy);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#8b5cf6';ctx.font='10px DM Sans,system-ui';ctx.textAlign='left';
+  ctx.fillText('70kg goal',pad.l+4,gy-5);
+
+  // Fill
+  const gr=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
+  gr.addColorStop(0,'rgba(139,92,246,0.2)');gr.addColorStop(1,'rgba(139,92,246,0)');
+  ctx.beginPath();ctx.moveTo(xS(0),yS(l[0].w));
+  l.forEach((e,i)=>{if(i>0)ctx.lineTo(xS(i),yS(e.w))});
+  ctx.lineTo(xS(l.length-1),pad.t+ch);ctx.lineTo(xS(0),pad.t+ch);ctx.closePath();
+  ctx.fillStyle=gr;ctx.fill();
+
+  // Line
+  ctx.beginPath();ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.lineJoin='round';
+  l.forEach((e,i)=>{i===0?ctx.moveTo(xS(i),yS(e.w)):ctx.lineTo(xS(i),yS(e.w))});ctx.stroke();
+
+  // Dots
+  l.forEach((e,i)=>{
+    const x=xS(i),y=yS(e.w);ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle='#8b5cf6';ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();
+    if(i===0||i===l.length-1){ctx.fillStyle='#e8e8e8';ctx.font='bold 11px DM Sans,system-ui';ctx.textAlign='center';ctx.fillText(e.w+'kg',x,y-10)}
+  });
+
+  // X labels
+  ctx.fillStyle='#444';ctx.font='10px DM Sans,system-ui';ctx.textAlign='center';
+  const st=Math.max(1,Math.floor(l.length/5));
+  l.forEach((e,i)=>{if(i%st===0||i===l.length-1)ctx.fillText(e.d.slice(5),xS(i),H-pad.b+16)});
+}
+
+// Workout
+function toggleWo(){
+  const l=gWo(),d=td(),btn=document.getElementById('wo-btn');
+  if(l.includes(d)){l.splice(l.indexOf(d),1);sWo(l);btn.className='wo-btn';btn.textContent='Mark Workout Done';toast('Workout unmarked')}
+  else{l.push(d);sWo(l);btn.className='wo-btn on';btn.textContent='Workout Done';toast('Workout logged')}
+  updDash();
+}
+function renderWoLog(){
+  const l=gWo().slice().reverse().slice(0,14),el=document.getElementById('wo-log');
+  if(!l.length){el.innerHTML='<p style="color:var(--muted);font-size:13px">No workouts logged yet.</p>';return}
+  el.innerHTML=l.map(d=>`<div class="wl-item"><span class="wl-date">${d}</span><span style="color:var(--green);font-weight:600">Trained</span><button class="btn-d" style="padding:4px 8px;font-size:11px" onclick="delWo('${d}')">✕</button></div>`).join('');
+}
+function delWo(d){sWo(gWo().filter(e=>e!==d));renderWoLog();updDash()}
+function clearWoLog(){if(!confirm('Delete all workout data?'))return;localStorage.removeItem('wol');renderWoLog();updDash();toast('Workout data cleared')}
+
+// Shopping
+function buildShop(){
+  const el=document.getElementById('shop-card');let html='',si=0;
+  SHOP.forEach(item=>{
+    if(item.cat){html+=`<div class="shop-cat">${item.cat}</div>`;return}
+    html+=`<div class="shop" id="si${si}" onclick="togSh(${si})"><div class="sh-box">${CHK}</div><span class="sh-name">${item.n}</span><span class="sh-qty">${item.q}</span></div>`;si++;
+  });
+  el.innerHTML=html;loadShop();
+}
+function togSh(i){const a=gSh();a[i]=!a[i];sSh(a);applyShop(i,a[i])}
+function applyShop(i,v){const el=document.getElementById('si'+i);if(el){el.classList.toggle('done',v)}}
+function loadShop(){const a=gSh();a.forEach((v,i)=>applyShop(i,v))}
+function resetShop(){sSh([]);document.querySelectorAll('.shop').forEach(el=>el.classList.remove('done'));toast('Shopping list reset')}
+
+// Dashboard
+function updDash(){
+  const l=gW(),lat=l.length?l[l.length-1].w:SW,g=Math.max(0,lat-SW),p=Math.min(100,g/(GW-SW)*100);
+  document.getElementById('hw-curr').textContent=lat+'kg';
+  document.getElementById('hw-bar').style.width=p+'%';
+  document.getElementById('hw-pct').textContent=p.toFixed(1)+'% complete';
+  document.getElementById('d-gain').textContent='+'+g.toFixed(1)+'kg';
+  const c=gM(),eaten=c.reduce((s,v,i)=>s+(v?MEALS[i].k:0),0);
+  document.getElementById('d-kcal').textContent=eaten.toLocaleString();
+  document.getElementById('d-meals').textContent=c.filter(Boolean).length+'/6';
+  const wo=gWo(),btn=document.getElementById('wo-btn');
+  if(wo.includes(td())){btn.className='wo-btn on';btn.textContent='Workout Done'}
+  else{btn.className='wo-btn';btn.textContent='Mark Workout Done'}
+  document.getElementById('d-streak').textContent=calcStreak();
+}
+function calcStreak(){
+  const mc=JSON.parse(localStorage.getItem('mc')||'{}');let s=0,d=new Date();
+  for(let i=0;i<60;i++){
+    const k=d.toISOString().slice(0,10),c=mc[k];
+    if(c&&c.filter(Boolean).length>=5)s++;else if(i>0)break;
+    d.setDate(d.getDate()-1);
+  }return s;
+}
+
+// Toast
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1800)}
+
+// Nuke
+function nukeAll(){if(!confirm('Delete ALL tracked data? Cannot be undone.'))return;['wl','mc','wol','sc'].forEach(k=>localStorage.removeItem(k));renderMeals();renderWLog();renderWoLog();loadShop();updDash();toast('All data cleared')}
+
+// Init
+renderMeals();buildShop();updDash();
+</script>
+</body>
+</html>
